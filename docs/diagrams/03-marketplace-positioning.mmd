@@ -1,0 +1,38 @@
+flowchart TD
+    subgraph MARKET["Enterprise AI App Marketplace"]
+        FC["Finance Copilot"]
+        LC["Legal Copilot"]
+        HC["HR Copilot"]
+    end
+
+    SDLC["<b>SDLC Factory</b><br/>(this guide)"]
+
+    subgraph CLIENTS["Developer Clients"]
+        CC["Claude Code"]
+        GH["GitHub Copilot"]
+    end
+
+    subgraph TOOLS["Tools & Agents"]
+        GW["AgentCore MCP Gateway<br/>JIRA · Confluence · SonarQube · ..."]
+        SA["A2A Sub-Agents<br/>Rover · AgentForce · Copilot Studio"]
+    end
+
+    FC -- "A2A: generate regulatory-compliant stories" --> SDLC
+    LC -- "A2A: compliance-aware code generation" --> SDLC
+    HC -- "A2A: policy checks before code review" --> SDLC
+
+    SDLC --> CLIENTS
+    SDLC --> GW
+    SDLC --> SA
+
+    style MARKET fill:#0d0d0d,color:#ffffff,stroke:#ffffff
+    style FC fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style LC fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style HC fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style SDLC fill:#003d1a,color:#ffffff,stroke:#00c853
+    style CLIENTS fill:#1e3a5f,color:#e0e0e0,stroke:#4a90d9
+    style TOOLS fill:#3d1a00,color:#e0e0e0,stroke:#ff8c00
+    style CC fill:#1a3d5f,color:#e0e0e0,stroke:#7cb8f5
+    style GH fill:#1a3d5f,color:#e0e0e0,stroke:#7cb8f5
+    style GW fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style SA fill:#3d2200,color:#e0e0e0,stroke:#ff8c00

@@ -1,0 +1,54 @@
+flowchart TD
+    ORCH["<b>SDLC Orchestrator</b><br/>Amazon Bedrock AgentCore"]
+
+    subgraph ROUTING["Model Routing Decision"]
+        R1{"Task type?"}
+    end
+
+    subgraph BEDROCK["☁️ Amazon Bedrock (Primary)"]
+        B1["Claude 3.5 Sonnet<br/>Orchestration · Reasoning<br/>Code Review · General SDLC"]
+        B2["Claude 3 Opus<br/>Security Analysis<br/>Architecture Design"]
+    end
+
+    subgraph AZURE["☁️ Azure AI Foundry (Optional)"]
+        A1["GPT-4o Agent<br/>Azure-mandated workloads<br/>CONFIDENTIAL-AZURE data"]
+        A2["Azure OpenAI<br/>OAuth2 via Entra ID<br/>A2A endpoint"]
+    end
+
+    subgraph SELFHOSTED["🏠 Self-Hosted / Snowflake"]
+        S1["Snowflake Cortex<br/>Snowflake-native pipelines<br/>Custom Lambda MCP"]
+        S2["Llama / Custom Models<br/>Air-gapped environments<br/>Custom Lambda MCP"]
+    end
+
+    subgraph SECURITY["🔐 Credentials"]
+        SEC1["AWS IAM Role<br/>(Bedrock native)"]
+        SEC2["Secrets Manager<br/>Azure OAuth client secret"]
+        SEC3["Secrets Manager<br/>Snowflake / custom credentials"]
+    end
+
+    ORCH --> R1
+    R1 -- "General SDLC tasks" --> B1
+    R1 -- "Security / Architecture" --> B2
+    R1 -- "Azure-mandated / GPT-4o preferred" --> A1
+    R1 -- "Snowflake-native / air-gapped" --> S1
+    R1 -- "Air-gapped / self-hosted" --> S2
+    A1 <--> A2
+    B1 & B2 --> SEC1
+    A1 & A2 --> SEC2
+    S1 & S2 --> SEC3
+
+    style ORCH fill:#003366,color:#ffffff,stroke:#0080ff
+    style ROUTING fill:#1a1a1a,color:#e0e0e0,stroke:#555
+    style BEDROCK fill:#003d1a,color:#e0e0e0,stroke:#00c853
+    style AZURE fill:#1a1a3d,color:#e0e0e0,stroke:#0078d4
+    style SELFHOSTED fill:#3d1a00,color:#e0e0e0,stroke:#ff8c00
+    style SECURITY fill:#3d0000,color:#e0e0e0,stroke:#ff4444
+    style B1 fill:#005c1a,color:#e0e0e0,stroke:#00c853
+    style B2 fill:#005c1a,color:#e0e0e0,stroke:#00c853
+    style A1 fill:#00288a,color:#e0e0e0,stroke:#0078d4
+    style A2 fill:#00288a,color:#e0e0e0,stroke:#0078d4
+    style S1 fill:#5c3d00,color:#e0e0e0,stroke:#ff8c00
+    style S2 fill:#5c3d00,color:#e0e0e0,stroke:#ff8c00
+    style SEC1 fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    style SEC2 fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    style SEC3 fill:#5c0000,color:#e0e0e0,stroke:#ff4444

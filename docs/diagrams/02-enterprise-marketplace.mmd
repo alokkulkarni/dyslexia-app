@@ -1,0 +1,72 @@
+flowchart TB
+    subgraph MARKETPLACE["🏪 AI App Marketplace"]
+        direction LR
+        APP1["Insights IQ"]
+        APP2["HR Copilot"]
+        APP3["Finance Copilot"]
+        APP4["Marketing Copilot"]
+        APP5["Legal Copilot"]
+    end
+
+    subgraph APPS["Application Layer"]
+        direction LR
+        subgraph EXTAPPS["External AI Apps"]
+            E1["MS Copilot 365"]
+            E2["MS Copilot Studio"]
+            E3["AgentForce Agents"]
+        end
+        subgraph SDLCTOOLS["SDLC Tools ◄ THIS GUIDE"]
+            T1["Claude Code"]
+            T2["GitHub Copilot"]
+            T3["SDLC Orchestrator<br/>(AgentCore)"]
+        end
+        subgraph AIENG["AI Engineering Tools"]
+            P1["Prompt Lab<br/>Agent Cards"]
+            P2["Evaluation Tools<br/>Reference Architectures"]
+            P3["No-code / Low-code DEV"]
+        end
+    end
+
+    subgraph INTEGRATION["🔌 Integration Layer"]
+        direction LR
+        subgraph HUB["API │ Agents │ MCP Server Hub"]
+            H1["AgentCore MCP Gateway<br/>Atlassian · GitHub · SonarQube<br/>Veracode · Jenkins · Nexus"]
+            H2["A2A Agent Hub<br/>Rover · Copilot Studio · AgentForce"]
+        end
+        subgraph MODELS["AI Models Hub"]
+            M1["Amazon Bedrock<br/>(Claude)"]
+            M2["Azure OpenAI<br/>(GPT-4o)"]
+            M3["Self-hosted<br/>(Llama etc.)"]
+        end
+    end
+
+    subgraph RAI["🛡️ Responsible AI"]
+        R1["Guardrails │ Access Control │ Versioning"]
+        R2["Audit Logs │ Observability │ Telemetry"]
+    end
+
+    subgraph DATA["📊 Data and Services"]
+        direction LR
+        D1["Enterprise Data<br/>Marketplace<br/>Data Catalog<br/>Snowflake Data"]
+        D2["SDLC Products<br/>via MCP Servers<br/>JIRA · SonarQube<br/>ServiceNow"]
+        D3["ML/AI Agentic<br/>RAG Services<br/>AgentCore · SageMaker<br/>Snowflake Cortex"]
+        D4["Infrastructure<br/>AWS · Snowflake"]
+    end
+
+    MARKETPLACE --> APPS
+    EXTAPPS -- "A2A / MCP" --> HUB
+    SDLCTOOLS -- "Bridge MCP" --> HUB
+    HUB --> RAI
+    MODELS --> RAI
+    RAI --> DATA
+
+    style MARKETPLACE fill:#0d0d0d,color:#ffffff,stroke:#ffffff
+    style APPS fill:#1a1a1a,color:#e0e0e0,stroke:#555
+    style EXTAPPS fill:#1a1f3d,color:#e0e0e0,stroke:#4a90d9
+    style SDLCTOOLS fill:#003d1a,color:#e0e0e0,stroke:#00c853
+    style AIENG fill:#1a3d3d,color:#e0e0e0,stroke:#00bcd4
+    style INTEGRATION fill:#1a1a1a,color:#e0e0e0,stroke:#777
+    style HUB fill:#0d0d0d,color:#ffffff,stroke:#888
+    style MODELS fill:#0d0d0d,color:#ffffff,stroke:#888
+    style RAI fill:#0d0d0d,color:#ffffff,stroke:#888
+    style DATA fill:#1a1a1a,color:#e0e0e0,stroke:#555

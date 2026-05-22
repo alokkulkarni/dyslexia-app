@@ -1,0 +1,68 @@
+flowchart TD
+    DEV["👨‍💻 Developer<br/>Claude Code / GitHub Copilot<br/>calls sdlc_run via Bridge MCP"]
+
+    subgraph DISCOVERY["🔍 Discovery Phase"]
+        A1["Source Code Analysis Agent"]
+        A2["Documentation Generation Agent"]
+        A3["Requirements Extraction Agent"]
+        A4["Dependency Mapping Agent"]
+        GATE1{{"✅ Code-to-Doc<br/>Validation Gate<br/>GREEN required"}}
+    end
+
+    subgraph REFINEMENT["📋 Refinement Phase"]
+        B1["Business Rules Extraction Agent"]
+        B2["Requirements Creation Agent"]
+        B3["Requirements Validation Agent"]
+        B4["JIRA User Story Creation Agent"]
+        GATE2{{"✅ Requirements<br/>Validation Gate<br/>GREEN required"}}
+    end
+
+    subgraph DEVELOPMENT["⚙️ Development Phase"]
+        C1["Requirements Parser Agent"]
+        C2["User Story Refinement Agent"]
+        C3["System Design Agent"]
+    end
+
+    subgraph CODEGEN["💻 Code & Test Generation Phase"]
+        D1["Code Generation Agent"]
+        D2["Unit Test Generation Agent"]
+        D3["Integration Test Generation Agent"]
+        GATE3{{"✅ Coding & Unit Test<br/>Validation Gate<br/>GREEN required"}}
+    end
+
+    subgraph REVIEW["🔎 Review Phase"]
+        E1["Test Coverage Agent"]
+        E2["Refactoring Agent"]
+        E3["Security Auditor Agent"]
+        E4["Coding Standards Review Agent"]
+    end
+
+    subgraph OUTPUTS["📤 Outputs"]
+        O1["Pull Request created in Bitbucket/GitHub"]
+        O2["JIRA story moved to Done"]
+        O3["Confluence docs updated"]
+    end
+
+    DEV --> A1 & A2 & A3 & A4
+    A1 & A2 & A3 & A4 --> GATE1
+    GATE1 -- "GREEN" --> B1 & B2 & B3 & B4
+    GATE1 -- "RED — blocked" --> DEV
+    B1 & B2 & B3 --> GATE2
+    GATE2 -- "GREEN" --> B4
+    B4 --> C1 & C2 & C3
+    C1 & C2 & C3 --> D1 & D2 & D3
+    D1 & D2 & D3 --> GATE3
+    GATE3 -- "GREEN" --> E1 & E2 & E3 & E4
+    GATE3 -- "RED — blocked" --> DEV
+    E1 & E2 & E3 & E4 --> O1 & O2 & O3
+
+    style DEV fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style DISCOVERY fill:#1a3d1a,color:#e0e0e0,stroke:#00c853
+    style REFINEMENT fill:#1a2d3d,color:#e0e0e0,stroke:#4a90d9
+    style DEVELOPMENT fill:#2d1a3d,color:#e0e0e0,stroke:#9c27b0
+    style CODEGEN fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style REVIEW fill:#3d0000,color:#e0e0e0,stroke:#ff4444
+    style OUTPUTS fill:#003d1a,color:#e0e0e0,stroke:#00c853
+    style GATE1 fill:#004d00,color:#ffffff,stroke:#00c853
+    style GATE2 fill:#004d00,color:#ffffff,stroke:#00c853
+    style GATE3 fill:#004d00,color:#ffffff,stroke:#00c853

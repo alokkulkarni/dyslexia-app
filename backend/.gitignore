@@ -1,0 +1,19 @@
+# ── AWS SAM build artifacts ───────────────────────────────────────────────────
+# build.toml contains absolute local paths — never commit
+.aws-sam/
+samconfig.toml
+
+# ── Lambda dependencies ────────────────────────────────────────────────────────
+# Rebuilt by SAM CLI during `sam build` — do not commit
+src/node_modules/
+
+# ── Environment variables ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store

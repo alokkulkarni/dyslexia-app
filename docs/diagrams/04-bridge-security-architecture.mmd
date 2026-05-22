@@ -1,0 +1,52 @@
+flowchart TD
+    DEV["👨‍💻 Developer<br/>Claude Code / GitHub Copilot"]
+
+    subgraph EDGE["🌐 Edge Security"]
+        WAF["AWS WAF<br/>SQLi rules · Body size limit"]
+        APIGW["API Gateway (REST)<br/>TLS 1.3 · Rate limiting<br/>Usage plans (20 calls/hr)"]
+        AUTH["Lambda Authorizer<br/>OIDC token → AD group<br/>→ allowed phases (RBAC)"]
+    end
+
+    subgraph VPC["🔒 Private VPC (no public IP)"]
+        ECS["Bridge MCP Server<br/>ECS Fargate (private subnet)<br/>Input validation · Audit log"]
+        SM["AWS Secrets Manager<br/>Agent IDs · OAuth credentials"]
+    end
+
+    subgraph BEDROCK["☁️ Amazon Bedrock"]
+        VPCE["VPC Interface Endpoint<br/>(traffic stays off public internet)"]
+        AGENT["AgentCore Orchestrator<br/>SDLC Pipeline Agents"]
+    end
+
+    subgraph AUDIT["📋 Audit & Observability"]
+        CT["CloudTrail<br/>All bedrock:InvokeAgent calls"]
+        CW["CloudWatch Logs<br/>Per-invocation: user · phase · sessionId · duration"]
+        XR["X-Ray Tracing<br/>Distributed across all agents"]
+    end
+
+    DEV -- "HTTPS" --> WAF
+    WAF --> APIGW
+    APIGW --> AUTH
+    AUTH -- "403 if phase not in allowed set" --> APIGW
+    AUTH -- "x-caller-username · x-allowed-phases headers" --> ECS
+    ECS --> SM
+    ECS -- "via VPC endpoint" --> VPCE
+    VPCE --> AGENT
+    AGENT --> CT
+    ECS --> CW
+    AGENT --> XR
+
+    style DEV fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style EDGE fill:#3d0000,color:#e0e0e0,stroke:#ff4444
+    style WAF fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    style APIGW fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    style AUTH fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    style VPC fill:#003d00,color:#e0e0e0,stroke:#00c853
+    style ECS fill:#005c00,color:#e0e0e0,stroke:#00c853
+    style SM fill:#005c00,color:#e0e0e0,stroke:#00c853
+    style BEDROCK fill:#003366,color:#e0e0e0,stroke:#0080ff
+    style VPCE fill:#004080,color:#e0e0e0,stroke:#0080ff
+    style AGENT fill:#004080,color:#e0e0e0,stroke:#0080ff
+    style AUDIT fill:#3d3d00,color:#e0e0e0,stroke:#cccc00
+    style CT fill:#5c5c00,color:#e0e0e0,stroke:#cccc00
+    style CW fill:#5c5c00,color:#e0e0e0,stroke:#cccc00
+    style XR fill:#5c5c00,color:#e0e0e0,stroke:#cccc00

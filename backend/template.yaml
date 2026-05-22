@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Dyslexia Flashcards App Backend - Secure Architecture
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    # arm64 (Graviton2) — ~20 % cheaper, same I/O-bound performance as x86_64
+    Architectures:
+      - arm64
+    # Active X-Ray tracing on all functions
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref FlashcardsTable
+        DOCUMENT_BUCKET: !Ref DocumentBucket
+        USER_POOL_CLIENT_ID: !Ref UserPoolClient
+        # CVE-5: pass CloudFront origin so Lambda can restrict CORS dynamically
+        ALLOWED_ORIGIN: !Sub "https://${FrontendDistribution.DomainName}"
+        # P1: enable HTTP keep-alive for AWS SDK v3 (belt-and-suspenders with NodeHttpHandler)
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+
+Resources:
+  # ── Frontend Hosting ───────────────────────────────────────────────────────
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Description: "OAC for Dyslexia App Frontend"
+        Name: !Sub "${AWS::StackName}-OAC"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # CVE-13: security response headers (CSP, HSTS, X-Frame-Options, etc.)
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-SecurityHeaders"
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Protection: true
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' https://*.execute-api.eu-west-2.amazonaws.com https://api.elevenlabs.io https://api.openai.com;"
+            Override: true
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Origins:
+          - DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            Id: FrontendBucketOrigin
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
+        DefaultCacheBehavior:
+          TargetOriginId: FrontendBucketOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "cloudfront.amazonaws.com"
+            Action: "s3:GetObject"
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceArn": !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}"
+
+  # ── Database & Storage ─────────────────────────────────────────────────────
+  FlashcardsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: DyslexiaFlashcards
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: deckId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: deckId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      # CVE-14: explicit encryption at rest
+      SSESpecification:
+        SSEEnabled: true
+      # PROD: enable Point-in-Time Recovery for data protection
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  DocumentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # CVE-10: block all public access on the upload bucket
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # ── Auth ───────────────────────────────────────────────────────────────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: DyslexiaAppUsers
+      AutoVerifiedAttributes:
+        - email
+      # CVE-4: enforce strong password policy
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 10
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      DeletionProtection: ACTIVE
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: DyslexiaAppWebClient
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      # Prevent token reuse attacks: short-lived tokens
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  # ── API Gateway ────────────────────────────────────────────────────────────
+  DyslexiaApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      # CVE-1: require Cognito JWT on all routes by default
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+      # CVE-5: restrict CORS to the CloudFront origin
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: !Sub "'https://${FrontendDistribution.DomainName}'"
+      # PROD: per-stage throttling to prevent abuse and runaway Bedrock spend
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingBurstLimit: 100
+          ThrottlingRateLimit: 50
+
+  # ── Lambda Functions ───────────────────────────────────────────────────────
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: auth.handler
+      Runtime: nodejs20.x
+      MemorySize: 256   # auth is lightweight — no heavy processing
+      Events:
+        SignupApi:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: post
+            RestApiId: !Ref DyslexiaApi
+            # CVE-1: auth endpoints are public (no token yet)
+            Auth:
+              Authorizer: NONE
+        ConfirmApi:
+          Type: Api
+          Properties:
+            Path: /auth/confirm
+            Method: post
+            RestApiId: !Ref DyslexiaApi
+            Auth:
+              Authorizer: NONE
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: post
+            RestApiId: !Ref DyslexiaApi
+            Auth:
+              Authorizer: NONE
+
+  UploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: upload.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref DocumentBucket
+      Events:
+        UploadApi:
+          Type: Api
+          Properties:
+            Path: /document/upload
+            Method: post
+            RestApiId: !Ref DyslexiaApi
+
+  GenerateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: generate.handler
+      Runtime: nodejs20.x
+      Timeout: 60
+      MemorySize: 1024  # Bedrock + PDF parsing benefits from more memory
+      # CVE-12: cap concurrency to prevent Bedrock cost exhaustion / DoS
+      ReservedConcurrentExecutions: 20
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FlashcardsTable
+        - S3ReadPolicy:
+            BucketName: !Ref DocumentBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+      Events:
+        GenerateApi:
+          Type: Api
+          Properties:
+            Path: /flashcards/generate
+            Method: post
+            RestApiId: !Ref DyslexiaApi
+
+  GetFlashcardsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: flashcards.handler
+      Runtime: nodejs20.x
+      MemorySize: 256   # read-only DynamoDB query — minimal memory needed
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FlashcardsTable
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Path: /flashcards
+            Method: get
+            RestApiId: !Ref DyslexiaApi
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${DyslexiaApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  FrontendBucketName:
+    Description: "S3 Bucket for Frontend Hosting"
+    Value: !Ref FrontendBucket
+  CloudFrontUrl:
+    Description: "CloudFront Distribution URL"
+    Value: !Sub "https://${FrontendDistribution.DomainName}"
+  CloudFrontDistributionId:
+    Description: "CloudFront Distribution ID"
+    Value: !Ref FrontendDistribution
+  DocumentBucketName:
+    Description: "S3 Bucket for Uploads"
+    Value: !Ref DocumentBucket

@@ -1,0 +1,51 @@
+flowchart TD
+    subgraph CLIENTS["🖥️ Developer Clients"]
+        CC["<b>Claude Code</b><br/>claude / claude --ide<br/>CLAUDE.md steering<br/>.claude/commands/<br/>Git hook integration"]
+        GH["<b>GitHub Copilot</b><br/>VSCode Extension (MCP)<br/>IntelliJ Plugin (MCP)<br/>gh copilot CLI<br/>Copilot Extensions"]
+    end
+
+    BRIDGE["<b>AgentCore Bridge MCP Server</b><br/>sdlc_run / sdlc_status tools<br/>stdio or SSE transport<br/>IAM least-privilege · RBAC · Audit log"]
+
+    CC -- "AgentCore Bridge MCP (stdio/SSE)" --> BRIDGE
+    GH -- "AgentCore Bridge MCP (stdio/SSE)" --> BRIDGE
+
+    ORCH["<b>SDLC Orchestrator</b><br/>Amazon Bedrock AgentCore<br/>Claude 3.5 Sonnet"]
+
+    BRIDGE --> ORCH
+
+    subgraph GATEWAY["🔌 AgentCore MCP Gateway"]
+        G1["Atlassian JIRA + Confluence"]
+        G2["GitHub / Bitbucket"]
+        G3["SonarQube / Veracode"]
+        G4["Jenkins / Nexus"]
+        G5["Custom Lambda MCPs"]
+    end
+
+    subgraph SUBAGENTS["🤖 Sub-Agents (A2A / Bedrock)"]
+        S1["Atlassian Rover"]
+        S2["MS Copilot Studio Agents"]
+        S3["Azure AI Foundry (GPT-4o)"]
+        S4["AgentForce Agents"]
+        S5["Custom Bedrock Agents"]
+    end
+
+    ORCH --> GATEWAY
+    ORCH --> SUBAGENTS
+
+    style CLIENTS fill:#1a1a2e,color:#e0e0e0,stroke:#4a90d9
+    style CC fill:#2d2d2d,color:#e0e0e0,stroke:#7cb8f5
+    style GH fill:#2d2d2d,color:#e0e0e0,stroke:#7cb8f5
+    style BRIDGE fill:#1e3a5f,color:#e0e0e0,stroke:#4a90d9
+    style ORCH fill:#003366,color:#ffffff,stroke:#0080ff
+    style GATEWAY fill:#003d1a,color:#e0e0e0,stroke:#00a86b
+    style SUBAGENTS fill:#3d1a00,color:#e0e0e0,stroke:#ff8c00
+    style G1 fill:#1a3d1a,color:#e0e0e0,stroke:#00a86b
+    style G2 fill:#1a3d1a,color:#e0e0e0,stroke:#00a86b
+    style G3 fill:#1a3d1a,color:#e0e0e0,stroke:#00a86b
+    style G4 fill:#1a3d1a,color:#e0e0e0,stroke:#00a86b
+    style G5 fill:#1a3d1a,color:#e0e0e0,stroke:#00a86b
+    style S1 fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style S2 fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style S3 fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style S4 fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
+    style S5 fill:#3d2200,color:#e0e0e0,stroke:#ff8c00
