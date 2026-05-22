@@ -122,7 +122,7 @@ The SDLC Factory is **one application** within a broader enterprise AI App Marke
 │  Enterprise Data      SDLC Products           ML/AI Agentic         Infrastructure│
 │  Marketplace          (via MCP Servers)        RAG Services                        │
 │  ─────────────────    ─────────────────────    ──────────────────    ──────────── │
-│  Data Catalog         DTCC Coding Standards    Snowflake Cortex      AWS          │
+│  Data Catalog         Coding Standards    Snowflake Cortex      AWS          │
 │  Snowflake Data       JIRA                     Amazon Bedrock        Snowflake    │
 │                       SonarQube/Qube Reports   AgentCore / SM                     │
 │                       ServiceNow               Azure AI Foundry                   │
