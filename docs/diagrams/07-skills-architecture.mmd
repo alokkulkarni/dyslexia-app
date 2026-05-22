@@ -1,0 +1,73 @@
+---
+title: "Skills Architecture — IDE Skills → AgentCore"
+---
+%%{init: {'theme': 'dark', 'themeVariables': {'fontSize': '14px'}}}%%
+flowchart TD
+    subgraph IDE["Layer 1 — IDE / Client (Skill Declarations)"]
+        direction LR
+        subgraph CC["Claude Code"]
+            CC1[".claude/commands/analyse.md<br/>Slash command /analyse"]
+            CC2[".claude/commands/review.md<br/>Slash command /review"]
+            CC3["CLAUDE.md<br/>Always-active steering"]
+            CC4["Git hooks<br/>pre-commit triggers"]
+        end
+        subgraph CP["GitHub Copilot"]
+            CP1["Copilot Extension tools<br/>@sdlc-factory analyze"]
+            CP2["Copilot Extension tools<br/>@sdlc-factory review"]
+            CP3["MCP tools (VSCode/IntelliJ)<br/>auto-discovered"]
+            CP4["copilot-instructions.md<br/>Behavioral context"]
+        end
+    end
+
+    subgraph BRIDGE["Layer 2 — AgentCore Bridge MCP Server (Skill Router)"]
+        B1["sdlc_run(phase, input,<br/>project_key, repo)"]
+        B2["sdlc_status(session_id)"]
+        B3["sdlc_list_phases()<br/>Skill Registry / Discovery"]
+    end
+
+    subgraph AGENTCORE["Layer 3 — AgentCore (Skill Executors)"]
+        direction TB
+        ORC["SDLC Orchestrator Agent"]
+        subgraph AGENTS["Specialist Agents"]
+            A1["Analysis Agent<br/>Action Group: analyze-requirements"]
+            A2["Architecture Agent<br/>Action Group: generate-architecture"]
+            A3["Refinement Agent<br/>Action Group: create-backlog"]
+            A4["Development Agent<br/>Action Group: generate-code"]
+            A5["Test Agent<br/>Action Group: run-tests"]
+            A6["Review Agent<br/>Action Group: security-audit + standards-check"]
+        end
+    end
+
+    subgraph EXTERNAL["Other Entry Points (same AgentCore agents)"]
+        E1["CI/CD GitHub Actions"]
+        E2["Atlassian Rover (A2A)"]
+        E3["MS Copilot Studio (REST/OpenAPI)"]
+    end
+
+    CC1 -->|"calls sdlc_run MCP tool"| B1
+    CC2 -->|"calls sdlc_run MCP tool"| B1
+    CC4 -->|"claude --no-interactive"| B1
+    CP1 -->|"Extension API → InvokeAgent"| B1
+    CP2 -->|"Extension API → InvokeAgent"| B1
+    CP3 -->|"MCP protocol → Bridge"| B1
+
+    B1 -->|"routes by phase"| ORC
+    B3 -->|"lists available phases"| IDE
+    ORC -->|"delegates"| A1
+    ORC -->|"delegates"| A2
+    ORC -->|"delegates"| A3
+    ORC -->|"delegates"| A4
+    ORC -->|"delegates"| A5
+    ORC -->|"delegates"| A6
+
+    E1 -->|"sdlc_run via Bridge"| B1
+    E2 -->|"direct A2A call"| ORC
+    E3 -->|"REST → OpenAPI → Bridge"| B1
+
+    style IDE fill:#1a1a2e,stroke:#4a9eff
+    style BRIDGE fill:#16213e,stroke:#f0a500
+    style AGENTCORE fill:#0f3460,stroke:#53c28b
+    style EXTERNAL fill:#1a0a2e,stroke:#9b59b6
+    style CC fill:#1a1a2e,stroke:#4a9eff
+    style CP fill:#1a1a2e,stroke:#4a9eff
+    style AGENTS fill:#0f3460,stroke:#53c28b

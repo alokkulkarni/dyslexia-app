@@ -1485,7 +1485,206 @@ aws ec2 create-vpc-endpoint \
 - [ ] *Shared server only:* Bedrock VPC endpoint configured — traffic never traverses public internet
 - [ ] CloudTrail enabled in the account — all `bedrock:InvokeAgent` calls auditable
 
+---
 
+## Step 5D — Skills Architecture: How IDE Skills Map to AgentCore
+
+Understanding the **three-layer skills model** before wiring up Claude Code (Step 6) or GitHub Copilot (Step 7) is essential — the same word "skill" means something different at each layer, and the mapping between them is what makes the whole system cohesive.
+
+### The Three-Layer Skills Model
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║           LAYER 1 — IDE / CLIENT   (Skill Declarations)                         ║
+║                                                                                  ║
+║  ┌──────────────────────────────────┐  ┌───────────────────────────────────────┐ ║
+║  │         CLAUDE CODE              │  │          GITHUB COPILOT               │ ║
+║  │                                  │  │                                       │ ║
+║  │  .claude/commands/analyse.md ──► │  │  @sdlc-factory analyze  (Extension)  │ ║
+║  │    slash command /analyse        │  │  @sdlc-factory review   (Extension)  │ ║
+║  │  .claude/commands/review.md  ──► │  │  MCP tools auto-discovered (VSCode/  │ ║
+║  │    slash command /review         │  │    IntelliJ via Bridge MCP config)   │ ║
+║  │  CLAUDE.md                       │  │  copilot-instructions.md             │ ║
+║  │    always-active steering        │  │    behavioral context (no invocation)│ ║
+║  │  Git hooks (pre-commit)          │  │  GitHub Actions workflows            │ ║
+║  │    call claude --no-interactive  │  │    call Bridge via CLI script        │ ║
+║  └─────────────────┬────────────────┘  └──────────────────┬────────────────────┘ ║
+╚════════════════════│══════════════════════════════════════│═════════════════════╝
+                     │  MCP protocol (stdio or SSE)         │  MCP protocol / Extension API
+                     └────────────────────┬─────────────────┘
+                                          │
+╔═════════════════════════════════════════▼════════════════════════════════════════╗
+║           LAYER 2 — BRIDGE MCP SERVER  (Skill Router)                            ║
+║                                                                                  ║
+║   sdlc_run(phase, input, project_key, repo)  ◄─── routes call to correct agent  ║
+║   sdlc_status(session_id)                    ◄─── check async job status        ║
+║   sdlc_list_phases()                         ◄─── skill registry / discovery    ║
+║                                                                                  ║
+║   Other entry points hitting the same router:                                   ║
+║     CI/CD GitHub Actions  ─────────────────────► sdlc_run via CLI script       ║
+║     MS Copilot Studio      ─────────────────────► sdlc_run via REST/OpenAPI     ║
+╚═════════════════════════════════════════┬════════════════════════════════════════╝
+                                          │  InvokeAgentCommand (AWS SDK)
+                                          │
+╔═════════════════════════════════════════▼════════════════════════════════════════╗
+║           LAYER 3 — AGENTCORE          (Skill Executors)                         ║
+║                                                                                  ║
+║   ┌──────────────────────────────────────────────────────────────────────────┐  ║
+║   │                     SDLC Orchestrator Agent                              │  ║
+║   │              (delegates to sub-agents by phase)                          │  ║
+║   └──────┬──────────┬──────────┬──────────┬──────────┬───────────────────────┘  ║
+║          │          │          │          │          │                           ║
+║          ▼          ▼          ▼          ▼          ▼                           ║
+║   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐ ║
+║   │Analysis  │ │Architect.│ │Refinement│ │Dev Agent │ │Review Agent          │ ║
+║   │Agent     │ │Agent     │ │Agent     │ │          │ │                      │ ║
+║   │Action    │ │Action    │ │Action    │ │Action    │ │Action Groups:        │ ║
+║   │Group:    │ │Group:    │ │Group:    │ │Group:    │ │ security-audit       │ ║
+║   │analyze-  │ │generate- │ │create-   │ │generate- │ │ standards-check      │ ║
+║   │requirem. │ │architect.│ │backlog   │ │code      │ │ test-coverage        │ ║
+║   └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────────────┘ ║
+║                                                                                  ║
+║   Also reachable directly (bypassing Bridge):                                   ║
+║     Atlassian Rover  ──► direct A2A call to Orchestrator                        ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+```
+
+> **Mermaid diagram:** [`diagrams/07-skills-architecture.mmd`](./diagrams/07-skills-architecture.mmd)
+>
+> ![Skills Architecture](./images/07-skills-architecture.png)
+
+---
+
+### Key Insight: Skill = Trigger vs Skill = Executor
+
+> **A Claude Code slash command or Copilot Extension skill is a *trigger and router*.  
+> The actual *computation* happens inside AgentCore's Lambda-backed Action Groups.**
+
+The IDE skill's job is narrow: package the developer's intent (context, repo, phase) and hand it to the Bridge. AgentCore's job is the actual execution — with governance, guardrails, audit trails, and sub-agent delegation.
+
+---
+
+### Claude Code Skills → AgentCore (Step-by-Step)
+
+| Skill Type | Where Defined | Invocation |
+|---|---|---|
+| **Slash command** | `.claude/commands/analyse.md` | `/analyse` in Claude chat |
+| **MCP tool** | Auto-discovered from Bridge (on startup) | Claude calls `sdlc_run` autonomously |
+| **CLAUDE.md directive** | Repo root `CLAUDE.md` | Always-active; shapes every conversation |
+| **Git hook** | `.git/hooks/pre-commit` | Triggers `claude --no-interactive` on commit |
+
+**What happens when `/analyse` is run:**
+
+```
+Developer types /analyse in Claude Code terminal
+        │
+        ▼  Claude reads .claude/commands/analyse.md (the skill definition)
+        │  Instruction: "call sdlc_run with phase=analysis"
+        │
+        ▼  Claude calls MCP tool sdlc_run on the Bridge (Step 5B)
+        │
+        ▼  Bridge validates + calls InvokeAgentCommand → Analysis Agent (AgentCore)
+        │
+        ▼  Analysis Agent runs Lambda Action Groups:
+        │    • analyze-requirements (scans codebase, extracts reqs)
+        │    • dependency-audit (checks CVEs, outdated packages)
+        │    • documentation-gap-analysis
+        │
+        ▼  Results stream back: AgentCore → Bridge → MCP response → Claude
+        │
+        ▼  Claude formats output per analyse.md instructions
+           Creates local files: analysis/source-code-report.json
+                                analysis/validation-status.md
+```
+
+---
+
+### GitHub Copilot Skills → AgentCore
+
+Copilot has **two** skill integration paths — both route through the same Bridge:
+
+| Path | Mechanism | Where Defined | Invocation |
+|---|---|---|---|
+| **Extension tool** | Copilot Extension API `tools[]` | `copilot-extension/server.js` | `@sdlc-factory analyze` in Copilot Chat |
+| **MCP tool** | `github.copilot.chat.mcp.servers` config | VSCode `settings.json` / IntelliJ plugin | Copilot auto-calls `sdlc_run` in chat context |
+| **Behavioral** | `copilot-instructions.md` | `.github/copilot-instructions.md` | No discrete invocation — always-active steering |
+
+**What happens when `@sdlc-factory analyze this PR` is typed:**
+
+```
+Developer types @sdlc-factory analyze this PR in Copilot Chat
+        │
+        ▼  GitHub routes to SDLC Factory Copilot Extension server (/agents endpoint)
+        │
+        ▼  Extension server matches "analyze" → calls analyze skill handler
+        │  Packages: { input: PR diff, project_key: repo name }
+        │
+        ▼  analyze handler calls InvokeAgentCommand → Analysis Agent (AgentCore)
+        │  (same agent, same Lambda Action Groups as the Claude Code path)
+        │
+        ▼  Result streams back via Copilot streaming response API
+           Appears inline in Copilot Chat panel (VSCode / GitHub.com)
+```
+
+---
+
+### Skill Registry and Discovery
+
+The Bridge's `sdlc_list_phases` tool is the **skill registry**. Any connected MCP client (Claude Code, Copilot, or a custom script) can query it:
+
+```bash
+# In Claude Code — ask what skills are available
+> What SDLC phases can I run?
+# Claude calls sdlc_list_phases → returns:
+{
+  "phases": ["analysis","architecture","refinement","development","test","review","full"],
+  "description": {
+    "analysis":      "Scan repo, extract requirements, dependency audit",
+    "architecture":  "Generate HLD, component diagram, ADR decisions",
+    "refinement":    "Create JIRA epics/stories with acceptance criteria",
+    "development":   "Generate code stubs, scaffolding, boilerplate",
+    "test":          "Generate unit/integration/E2E tests, run coverage",
+    "review":        "Security audit, coding standards, test coverage gate",
+    "full":          "Run all phases in sequence with gate checks"
+  }
+}
+```
+
+The MCP Gateway (Step 5) also exposes every registered tool (JIRA, Confluence, GitHub, SonarQube) as a discoverable MCP tool — so the full JIRA/Confluence toolset is also auto-discoverable as skills by Claude Code and Copilot.
+
+---
+
+### Skill Reuse: Define Once, Invoke Everywhere
+
+A single AgentCore Action Group is reachable from **all** clients without duplication:
+
+```
+   Claude Code /analyse        ──┐
+   Copilot @sdlc-factory        ─┤
+   gh copilot CLI script        ─┼──► Bridge MCP Server ──► AgentCore Analysis Agent
+   CI/CD GitHub Actions         ─┤     sdlc_run tool         Lambda Action Groups
+   MS Copilot Studio plugin     ─┘                           (governed, audited)
+
+   Atlassian Rover (A2A)    ────────────────────────────────► (direct A2A, no Bridge)
+```
+
+Define the requirements-extraction logic **once** as a Lambda Action Group in AgentCore — every IDE, agent, pipeline tool, and external SaaS invokes the same hardened, governed, audited implementation.
+
+---
+
+### Skill Mapping Summary
+
+| AgentCore Agent | Action Group (the skill executor) | Claude Code Skill | Copilot Skill | Bridge MCP Call |
+|---|---|---|---|---|
+| Analysis Agent | `analyze-requirements` | `/analyse` | `@sdlc-factory analyze` | `sdlc_run(phase=analysis)` |
+| Architecture Agent | `generate-architecture` | `/design` | `@sdlc-factory design` | `sdlc_run(phase=architecture)` |
+| Refinement Agent | `create-backlog` | `/backlog` | `@sdlc-factory backlog` | `sdlc_run(phase=refinement)` |
+| Development Agent | `generate-code` | `/codegen` | `@sdlc-factory codegen` | `sdlc_run(phase=development)` |
+| Test Agent | `run-tests` | `/test` | `@sdlc-factory test` | `sdlc_run(phase=test)` |
+| Review Agent | `security-audit` + `standards-check` | `/review` | `@sdlc-factory review` | `sdlc_run(phase=review)` |
+| Orchestrator | All of the above | `/sdlc` (full pipeline) | `@sdlc-factory full` | `sdlc_run(phase=full)` |
+
+---
 
 ## Step 6 — Connect Claude Code
 

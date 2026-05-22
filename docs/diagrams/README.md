@@ -12,6 +12,7 @@ Pre-rendered PNGs are in [`../images/`](../images/).
 | [`04-bridge-security-architecture.mmd`](./04-bridge-security-architecture.mmd) | AgentCore Bridge MCP Server — enterprise security architecture (WAF, API Gateway, OIDC, VPC) | [`04-bridge-security-architecture.png`](../images/04-bridge-security-architecture.png) |
 | [`05-sdlc-pipeline-flow.mmd`](./05-sdlc-pipeline-flow.mmd) | End-to-end SDLC pipeline flow with GREEN gates (Discovery → Refinement → Dev → Review) | [`05-sdlc-pipeline-flow.png`](../images/05-sdlc-pipeline-flow.png) |
 | [`06-multicloud-model-routing.mmd`](./06-multicloud-model-routing.mmd) | Multi-cloud AI Models Hub — Bedrock (Claude), Azure OpenAI (GPT-4o), self-hosted routing | [`06-multicloud-model-routing.png`](../images/06-multicloud-model-routing.png) |
+| [`07-skills-architecture.mmd`](./07-skills-architecture.mmd) | Three-layer skills model — how Claude Code/Copilot IDE skills map to AgentCore Action Groups | [`07-skills-architecture.png`](../images/07-skills-architecture.png) |
 
 ## Re-rendering PNGs
 
