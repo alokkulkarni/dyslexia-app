@@ -1,73 +1,89 @@
 ---
-title: "Skills Architecture — IDE Skills → AgentCore"
+title: "Agent Skills — Discovery, Activation, and Execution"
 ---
-%%{init: {'theme': 'dark', 'themeVariables': {'fontSize': '14px'}}}%%
-flowchart TD
-    subgraph IDE["Layer 1 — IDE / Client (Skill Declarations)"]
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px', 'fontFamily': 'monospace'}}}%%
+graph TD
+    subgraph SKILLS["agentskills.io Open Standard  (SKILL.md)"]
         direction LR
-        subgraph CC["Claude Code"]
-            CC1[".claude/commands/analyse.md<br/>Slash command /analyse"]
-            CC2[".claude/commands/review.md<br/>Slash command /review"]
-            CC3["CLAUDE.md<br/>Always-active steering"]
-            CC4["Git hooks<br/>pre-commit triggers"]
-        end
-        subgraph CP["GitHub Copilot"]
-            CP1["Copilot Extension tools<br/>@sdlc-factory analyze"]
-            CP2["Copilot Extension tools<br/>@sdlc-factory review"]
-            CP3["MCP tools (VSCode/IntelliJ)<br/>auto-discovered"]
-            CP4["copilot-instructions.md<br/>Behavioral context"]
-        end
+        SK1[".claude/skills/sdlc-analyse/SKILL.md"]
+        SK2[".claude/skills/sdlc-architecture/SKILL.md"]
+        SK3[".claude/skills/sdlc-backlog/SKILL.md"]
+        SK4[".claude/skills/sdlc-codegen/SKILL.md"]
+        SK5[".claude/skills/sdlc-test/SKILL.md"]
+        SK6[".claude/skills/sdlc-review/SKILL.md\n(disable-model-invocation: true)"]
+        SK7[".claude/skills/sdlc-full/SKILL.md\n(disable-model-invocation: true)"]
     end
 
-    subgraph BRIDGE["Layer 2 — AgentCore Bridge MCP Server (Skill Router)"]
-        B1["sdlc_run(phase, input,<br/>project_key, repo)"]
-        B2["sdlc_status(session_id)"]
-        B3["sdlc_list_phases()<br/>Skill Registry / Discovery"]
+    subgraph DISC["Stage 1 — Discovery  (at startup)"]
+        D1["Agent reads name + description only\n(low context cost)\nBuilds intent-to-skill map"]
     end
 
-    subgraph AGENTCORE["Layer 3 — AgentCore (Skill Executors)"]
-        direction TB
-        ORC["SDLC Orchestrator Agent"]
-        subgraph AGENTS["Specialist Agents"]
-            A1["Analysis Agent<br/>Action Group: analyze-requirements"]
-            A2["Architecture Agent<br/>Action Group: generate-architecture"]
-            A3["Refinement Agent<br/>Action Group: create-backlog"]
-            A4["Development Agent<br/>Action Group: generate-code"]
-            A5["Test Agent<br/>Action Group: run-tests"]
-            A6["Review Agent<br/>Action Group: security-audit + standards-check"]
-        end
+    subgraph CC["Claude Code"]
+        CC1["Reads .claude/skills/ at startup"]
+        CC2["Slash commands\n/sdlc-analyse  /sdlc-review  /sdlc-full"]
+        CC3["Auto-invokes on description match\n(unless disable-model-invocation: true)"]
     end
 
-    subgraph EXTERNAL["Other Entry Points (same AgentCore agents)"]
-        E1["CI/CD GitHub Actions"]
-        E2["Atlassian Rover (A2A)"]
-        E3["MS Copilot Studio (REST/OpenAPI)"]
+    subgraph CP["GitHub Copilot"]
+        CP1["Reads .claude/skills/ at startup\n(also .github/skills/, .agents/skills/)"]
+        CP2["Agent mode  (VSCode / IntelliJ)\ngh copilot CLI"]
+        CP3["SKILL.md injected when Copilot\nchooses skill as relevant"]
     end
 
-    CC1 -->|"calls sdlc_run MCP tool"| B1
-    CC2 -->|"calls sdlc_run MCP tool"| B1
-    CC4 -->|"claude --no-interactive"| B1
-    CP1 -->|"Extension API → InvokeAgent"| B1
-    CP2 -->|"Extension API → InvokeAgent"| B1
-    CP3 -->|"MCP protocol → Bridge"| B1
+    subgraph ACT["Stage 2 — Activation  (on match)"]
+        A1["Full SKILL.md injected into context\nDynamic context via command blocks\nArguments substituted via ARGUMENTS"]
+    end
 
-    B1 -->|"routes by phase"| ORC
-    B3 -->|"lists available phases"| IDE
-    ORC -->|"delegates"| A1
-    ORC -->|"delegates"| A2
-    ORC -->|"delegates"| A3
-    ORC -->|"delegates"| A4
-    ORC -->|"delegates"| A5
-    ORC -->|"delegates"| A6
+    subgraph EXEC["Stage 3 — Execution"]
+        E1["Agent follows SKILL.md instructions\nCalls sdlc_run MCP tool"]
+    end
 
-    E1 -->|"sdlc_run via Bridge"| B1
-    E2 -->|"direct A2A call"| ORC
-    E3 -->|"REST → OpenAPI → Bridge"| B1
+    subgraph BRIDGE["AgentCore Bridge MCP Server"]
+        B1["sdlc_run(phase, input, project_key, repo)\nInvokeAgentCommand → AgentCore"]
+    end
 
-    style IDE fill:#1a1a2e,stroke:#4a9eff
-    style BRIDGE fill:#16213e,stroke:#f0a500
-    style AGENTCORE fill:#0f3460,stroke:#53c28b
-    style EXTERNAL fill:#1a0a2e,stroke:#9b59b6
-    style CC fill:#1a1a2e,stroke:#4a9eff
-    style CP fill:#1a1a2e,stroke:#4a9eff
-    style AGENTS fill:#0f3460,stroke:#53c28b
+    subgraph AGENTCORE["AgentCore  (Amazon Bedrock)"]
+        direction LR
+        ORC["SDLC Orchestrator"]
+        AG1["Analysis Agent"]
+        AG2["Architecture Agent"]
+        AG3["Refinement Agent"]
+        AG4["Code Gen Agent"]
+        AG5["Test Agent"]
+        AG6["Review Agent"]
+    end
+
+    SKILLS -- "loaded at startup" --> DISC
+    DISC --> CC1
+    DISC --> CP1
+    CC1 --> CC2
+    CC1 --> CC3
+    CP1 --> CP2
+    CP1 --> CP3
+    CC2 -- "developer invokes" --> ACT
+    CC3 -- "auto-activates" --> ACT
+    CP2 -- "developer invokes" --> ACT
+    CP3 -- "auto-activates" --> ACT
+    ACT --> EXEC
+    EXEC -- "MCP protocol  (stdio or SSE)" --> B1
+    B1 -- "InvokeAgentCommand" --> ORC
+    ORC -- "delegates by phase" --> AG1
+    ORC --> AG2
+    ORC --> AG3
+    ORC --> AG4
+    ORC --> AG5
+    ORC --> AG6
+
+    classDef skills   fill:#1a2a1a,color:#e0e0e0,stroke:#53c28b,stroke-width:1px
+    classDef stage    fill:#1a1a2e,color:#e0e0e0,stroke:#4a9eff,stroke-width:1px
+    classDef cc       fill:#1a1a2e,color:#e0e0e0,stroke:#4a9eff,stroke-width:1px
+    classDef cp       fill:#1a1a2e,color:#e0e0e0,stroke:#9b59b6,stroke-width:1px
+    classDef bridge   fill:#2e1a1a,color:#e0e0e0,stroke:#e74c3c,stroke-width:1px
+    classDef core     fill:#0f3460,color:#e0e0e0,stroke:#53c28b,stroke-width:1px
+
+    class SK1,SK2,SK3,SK4,SK5,SK6,SK7 skills
+    class D1,A1,E1 stage
+    class CC1,CC2,CC3 cc
+    class CP1,CP2,CP3 cp
+    class B1 bridge
+    class ORC,AG1,AG2,AG3,AG4,AG5,AG6 core

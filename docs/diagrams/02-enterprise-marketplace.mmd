@@ -1,72 +1,83 @@
-flowchart TB
-    subgraph MARKETPLACE["🏪 AI App Marketplace"]
+---
+title: "Enterprise AI App Marketplace — Five-Layer Architecture"
+---
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px', 'fontFamily': 'monospace'}}}%%
+graph TB
+    subgraph MARKETPLACE["AI APP MARKETPLACE"]
         direction LR
-        APP1["Insights IQ"]
-        APP2["HR Copilot"]
-        APP3["Finance Copilot"]
-        APP4["Marketing Copilot"]
-        APP5["Legal Copilot"]
+        MP1["Insights IQ"]
+        MP2["HR Copilot"]
+        MP3["Finance Copilot"]
+        MP4["Marketing Copilot"]
+        MP5["Legal Copilot"]
     end
 
-    subgraph APPS["Application Layer"]
+    subgraph APPLAYER["APPLICATION LAYER"]
         direction LR
         subgraph EXTAPPS["External AI Apps"]
             E1["MS Copilot 365"]
             E2["MS Copilot Studio"]
-            E3["AgentForce Agents"]
+            E3["AgentForce Agents  (Salesforce)"]
         end
-        subgraph SDLCTOOLS["SDLC Tools ◄ THIS GUIDE"]
+        subgraph SDLCTOOLS["SDLC Tools  ◄ THIS GUIDE"]
             T1["Claude Code"]
             T2["GitHub Copilot"]
-            T3["SDLC Orchestrator<br/>(AgentCore)"]
+            T3["SDLC Orchestrator\n(AgentCore)"]
         end
         subgraph AIENG["AI Engineering Tools"]
-            P1["Prompt Lab<br/>Agent Cards"]
-            P2["Evaluation Tools<br/>Reference Architectures"]
+            P1["Prompt Lab\nMCP Tools / Agent Cards"]
+            P2["Evaluation Tools\nReference Architectures"]
             P3["No-code / Low-code DEV"]
         end
     end
 
-    subgraph INTEGRATION["🔌 Integration Layer"]
+    subgraph INTEGRATION["INTEGRATION LAYER"]
         direction LR
-        subgraph HUB["API │ Agents │ MCP Server Hub"]
-            H1["AgentCore MCP Gateway<br/>Atlassian · GitHub · SonarQube<br/>Veracode · Jenkins · Nexus"]
-            H2["A2A Agent Hub<br/>Rover · Copilot Studio · AgentForce"]
+        subgraph HUB["API | Agents | MCP Server Hub"]
+            H1["AgentCore MCP Gateway\n──────────────────────\nAtlassian · GitHub · SonarQube\nVeracode · Jenkins · Nexus\nCustom Lambda MCPs"]
+            H2["A2A Agent Hub\n──────────────────────\nRover · Copilot Studio\nAgentForce"]
         end
         subgraph MODELS["AI Models Hub"]
-            M1["Amazon Bedrock<br/>(Claude)"]
-            M2["Azure OpenAI<br/>(GPT-4o)"]
-            M3["Self-hosted<br/>(Llama etc.)"]
+            M1["Amazon Bedrock\n(Claude)"]
+            M2["Azure OpenAI\n(GPT-4o)"]
+            M3["Self-hosted\n(Llama etc.)"]
         end
     end
 
-    subgraph RAI["🛡️ Responsible AI"]
-        R1["Guardrails │ Access Control │ Versioning"]
-        R2["Audit Logs │ Observability │ Telemetry"]
+    subgraph RAI["RESPONSIBLE AI"]
+        R1["Guardrails | Access Control | Versioning"]
+        R2["Audit Logs | Observability | Telemetry\n(Bedrock Guardrails + Bridge RBAC + CloudTrail + CloudWatch)"]
     end
 
-    subgraph DATA["📊 Data and Services"]
+    subgraph DATA["DATA AND SERVICES"]
         direction LR
-        D1["Enterprise Data<br/>Marketplace<br/>Data Catalog<br/>Snowflake Data"]
-        D2["SDLC Products<br/>via MCP Servers<br/>JIRA · SonarQube<br/>ServiceNow"]
-        D3["ML/AI Agentic<br/>RAG Services<br/>AgentCore · SageMaker<br/>Snowflake Cortex"]
-        D4["Infrastructure<br/>AWS · Snowflake"]
+        D1["Enterprise Data\n──────────────\nData Catalog\nSnowflake Data"]
+        D2["SDLC Products\nvia MCP Servers\n──────────────\nJIRA · SonarQube\nServiceNow"]
+        D3["ML/AI Agentic\nRAG Services\n──────────────\nAgentCore · SageMaker\nSnowflake Cortex"]
+        D4["Infrastructure\n──────────────\nAWS\nSnowflake"]
     end
 
-    MARKETPLACE --> APPS
+    MARKETPLACE --> APPLAYER
     EXTAPPS -- "A2A / MCP" --> HUB
     SDLCTOOLS -- "Bridge MCP" --> HUB
     HUB --> RAI
     MODELS --> RAI
     RAI --> DATA
 
-    style MARKETPLACE fill:#0d0d0d,color:#ffffff,stroke:#ffffff
-    style APPS fill:#1a1a1a,color:#e0e0e0,stroke:#555
-    style EXTAPPS fill:#1a1f3d,color:#e0e0e0,stroke:#4a90d9
-    style SDLCTOOLS fill:#003d1a,color:#e0e0e0,stroke:#00c853
-    style AIENG fill:#1a3d3d,color:#e0e0e0,stroke:#00bcd4
-    style INTEGRATION fill:#1a1a1a,color:#e0e0e0,stroke:#777
-    style HUB fill:#0d0d0d,color:#ffffff,stroke:#888
-    style MODELS fill:#0d0d0d,color:#ffffff,stroke:#888
-    style RAI fill:#0d0d0d,color:#ffffff,stroke:#888
-    style DATA fill:#1a1a1a,color:#e0e0e0,stroke:#555
+    classDef market   fill:#0d1117,color:#ffffff,stroke:#555,stroke-width:1px
+    classDef ext      fill:#1a1f3d,color:#e0e0e0,stroke:#4a90d9,stroke-width:1px
+    classDef sdlc     fill:#003d1a,color:#e0e0e0,stroke:#00c853,stroke-width:2px
+    classDef aieng    fill:#1a3d3d,color:#e0e0e0,stroke:#00bcd4,stroke-width:1px
+    classDef hub      fill:#1a1a2e,color:#e0e0e0,stroke:#888,stroke-width:1px
+    classDef model    fill:#1a1a2e,color:#e0e0e0,stroke:#888,stroke-width:1px
+    classDef rai      fill:#2a1a00,color:#e0e0e0,stroke:#ff8c00,stroke-width:1px
+    classDef data     fill:#1a1a1a,color:#e0e0e0,stroke:#555,stroke-width:1px
+
+    class MP1,MP2,MP3,MP4,MP5 market
+    class E1,E2,E3 ext
+    class T1,T2,T3 sdlc
+    class P1,P2,P3 aieng
+    class H1,H2 hub
+    class M1,M2,M3 model
+    class R1,R2 rai
+    class D1,D2,D3,D4 data

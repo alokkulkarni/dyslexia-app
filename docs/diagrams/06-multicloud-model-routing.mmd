@@ -1,54 +1,52 @@
-flowchart TD
-    ORCH["<b>SDLC Orchestrator</b><br/>Amazon Bedrock AgentCore"]
+---
+title: "Multi-Cloud Model Routing"
+---
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px', 'fontFamily': 'monospace'}}}%%
+graph TD
+    ORCH["SDLC Orchestrator\n──────────────────────────\nAmazon Bedrock AgentCore"]
 
-    subgraph ROUTING["Model Routing Decision"]
-        R1{"Task type?"}
+    ROUTE{"Task type?"}
+
+    subgraph BEDROCK["Amazon Bedrock  (Primary)"]
+        B1["Claude 3.5 Sonnet\n──────────────────────────\nOrchestration · Reasoning\nCode Review · General SDLC"]
+        B2["Claude 3 Opus\n──────────────────────────\nSecurity Analysis\nArchitecture Design"]
     end
 
-    subgraph BEDROCK["☁️ Amazon Bedrock (Primary)"]
-        B1["Claude 3.5 Sonnet<br/>Orchestration · Reasoning<br/>Code Review · General SDLC"]
-        B2["Claude 3 Opus<br/>Security Analysis<br/>Architecture Design"]
+    subgraph AZURE["Azure AI Foundry  (Optional)"]
+        A1["GPT-4o Agent\n──────────────────────────\nAzure-mandated workloads\nCONFIDENTIAL-AZURE data"]
+        A2["Azure OpenAI\n──────────────────────────\nOAuth2 via Entra ID\nA2A endpoint"]
     end
 
-    subgraph AZURE["☁️ Azure AI Foundry (Optional)"]
-        A1["GPT-4o Agent<br/>Azure-mandated workloads<br/>CONFIDENTIAL-AZURE data"]
-        A2["Azure OpenAI<br/>OAuth2 via Entra ID<br/>A2A endpoint"]
+    subgraph SELFHOSTED["Self-Hosted / Snowflake  (Optional)"]
+        S1["Snowflake Cortex\n──────────────────────────\nSnowflake-native pipelines\nCustom Lambda MCP"]
+        S2["Llama / Custom Models\n──────────────────────────\nAir-gapped environments\nCustom Lambda MCP"]
     end
 
-    subgraph SELFHOSTED["🏠 Self-Hosted / Snowflake"]
-        S1["Snowflake Cortex<br/>Snowflake-native pipelines<br/>Custom Lambda MCP"]
-        S2["Llama / Custom Models<br/>Air-gapped environments<br/>Custom Lambda MCP"]
+    subgraph CREDS["Credentials  (Secrets Manager)"]
+        SEC1["AWS IAM Role\n(Bedrock native)"]
+        SEC2["Azure OAuth client secret\n(Secrets Manager)"]
+        SEC3["Snowflake / custom credentials\n(Secrets Manager)"]
     end
 
-    subgraph SECURITY["🔐 Credentials"]
-        SEC1["AWS IAM Role<br/>(Bedrock native)"]
-        SEC2["Secrets Manager<br/>Azure OAuth client secret"]
-        SEC3["Secrets Manager<br/>Snowflake / custom credentials"]
-    end
-
-    ORCH --> R1
-    R1 -- "General SDLC tasks" --> B1
-    R1 -- "Security / Architecture" --> B2
-    R1 -- "Azure-mandated / GPT-4o preferred" --> A1
-    R1 -- "Snowflake-native / air-gapped" --> S1
-    R1 -- "Air-gapped / self-hosted" --> S2
-    A1 <--> A2
+    ORCH --> ROUTE
+    ROUTE -- "General SDLC tasks" --> B1
+    ROUTE -- "Security / Architecture" --> B2
+    ROUTE -- "Azure-mandated / GPT-4o preferred" --> A1
+    ROUTE -- "Snowflake-native data pipeline" --> S1
+    ROUTE -- "Air-gapped / self-hosted" --> S2
+    A1 <-- "backed by" --> A2
     B1 & B2 --> SEC1
     A1 & A2 --> SEC2
     S1 & S2 --> SEC3
 
-    style ORCH fill:#003366,color:#ffffff,stroke:#0080ff
-    style ROUTING fill:#1a1a1a,color:#e0e0e0,stroke:#555
-    style BEDROCK fill:#003d1a,color:#e0e0e0,stroke:#00c853
-    style AZURE fill:#1a1a3d,color:#e0e0e0,stroke:#0078d4
-    style SELFHOSTED fill:#3d1a00,color:#e0e0e0,stroke:#ff8c00
-    style SECURITY fill:#3d0000,color:#e0e0e0,stroke:#ff4444
-    style B1 fill:#005c1a,color:#e0e0e0,stroke:#00c853
-    style B2 fill:#005c1a,color:#e0e0e0,stroke:#00c853
-    style A1 fill:#00288a,color:#e0e0e0,stroke:#0078d4
-    style A2 fill:#00288a,color:#e0e0e0,stroke:#0078d4
-    style S1 fill:#5c3d00,color:#e0e0e0,stroke:#ff8c00
-    style S2 fill:#5c3d00,color:#e0e0e0,stroke:#ff8c00
-    style SEC1 fill:#5c0000,color:#e0e0e0,stroke:#ff4444
-    style SEC2 fill:#5c0000,color:#e0e0e0,stroke:#ff4444
-    style SEC3 fill:#5c0000,color:#e0e0e0,stroke:#ff4444
+    classDef orch     fill:#003366,color:#ffffff,stroke:#0080ff,stroke-width:2px
+    classDef bedrock  fill:#003d1a,color:#e0e0e0,stroke:#00c853,stroke-width:1px
+    classDef azure    fill:#1a1a3d,color:#e0e0e0,stroke:#0078d4,stroke-width:1px
+    classDef self     fill:#3d2200,color:#e0e0e0,stroke:#ff8c00,stroke-width:1px
+    classDef creds    fill:#3d0000,color:#e0e0e0,stroke:#ff4444,stroke-width:1px
+
+    class ORCH orch
+    class B1,B2 bedrock
+    class A1,A2 azure
+    class S1,S2 self
+    class SEC1,SEC2,SEC3 creds

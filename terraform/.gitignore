@@ -1,0 +1,31 @@
+# Terraform state — never commit state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform plan files
+tfplan
+*.tfplan
+
+# Terraform working directory
+.terraform/
+
+# Lock file — commit this to pin provider versions
+# .terraform.lock.hcl  ← intentionally NOT ignored
+
+# Lambda zip archives generated at plan time
+modules/lambda/lambda_source.zip
+
+# Override files (local developer overrides)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Sensitive variable files — use environment variables or a secrets manager
+*.tfvars.local
+secrets.tfvars

@@ -1,0 +1,101 @@
+---
+title: "SDLC Factory as a Nested Multiplexer"
+---
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px', 'fontFamily': 'monospace'}}}%%
+graph LR
+    subgraph SKILLS["Level 4 — Input Demux\nSKILL.md description matching"]
+        direction TB
+        SK1["'analyse this repo'  → sdlc-analyse"]
+        SK2["'design architecture'  → sdlc-architecture"]
+        SK3["'generate user stories'  → sdlc-backlog"]
+        SK4["'write tests'  → sdlc-test"]
+        SK5["'/sdlc-review'  → LOCKED channel"]
+        SK6["'/sdlc-full'  → LOCKED channel"]
+    end
+
+    subgraph CLIENTS["Level 1 — Fan-In Mux\nMany clients → One Bridge endpoint"]
+        direction TB
+        C1["Claude Code\n/sdlc-analyse"]
+        C2["GitHub Copilot\nVSCode agent mode"]
+        C3["GitHub Copilot\nIntelliJ plugin"]
+        C4["gh copilot CLI"]
+        C5["CI/CD  (GitHub Actions)\npre-merge workflow"]
+        C6["MS Copilot Studio\nplugin / REST"]
+    end
+
+    subgraph BRIDGE["Bridge MCP Server\nFan-In Mux\nphase = channel selector"]
+        B1["sdlc_run(phase, input,\nproject_key, repo)\nInvokeAgentCommand"]
+    end
+
+    subgraph ORC["Level 2 — Fan-Out Mux\nOne request → N agents  (sequential, gated)"]
+        direction TB
+        O1["phase=analysis     → Analysis Agent"]
+        O2["phase=architecture → Architecture Agent"]
+        O3["phase=refinement   → Refinement Agent"]
+        O4["phase=development  → Dev Agent"]
+        O5["phase=test         → Test Agent"]
+        O6["phase=review       → Review Agent"]
+        O7["phase=full         → ALL  (sequential, gated)"]
+    end
+
+    subgraph GW["Level 3 — Tool Mux\nOne endpoint → N external systems"]
+        direction TB
+        T1["JIRA MCP\ncreate_issue · search_issue"]
+        T2["GitHub MCP\ncreate_pr · merge_pr"]
+        T3["SonarQube MCP\nscan_code · get_findings"]
+        T4["Confluence MCP\npublish_doc · update_page"]
+        T5["Veracode MCP\naudit_deps · get_cves"]
+    end
+
+    subgraph A2A["Direct A2A\nbypasses Bridge entirely"]
+        direction TB
+        R1["Atlassian Rover"]
+        R2["AgentForce"]
+        R3["Copilot Studio Agents"]
+    end
+
+    SKILLS -. "channel select\nbefore Bridge" .-> B1
+
+    C1 -- "MCP stdio" --> B1
+    C2 -- "MCP SSE" --> B1
+    C3 -- "MCP SSE" --> B1
+    C4 -- "CLI / MCP" --> B1
+    C5 -- "REST / CLI" --> B1
+    C6 -- "REST / OpenAPI" --> B1
+
+    B1 -- "routes by phase" --> O1
+    B1 --> O2
+    B1 --> O3
+    B1 --> O4
+    B1 --> O5
+    B1 --> O6
+    B1 --> O7
+
+    O1 -- "tool calls" --> T1
+    O1 --> T2
+    O2 --> T4
+    O3 --> T1
+    O5 --> T3
+    O6 --> T3
+    O6 --> T5
+
+    R1 -- "direct A2A" --> ORC
+    R2 --> ORC
+    R3 --> ORC
+
+    ORC(["AgentCore Orchestrator"])
+
+    classDef skills  fill:#1a2a1a,color:#e0e0e0,stroke:#53c28b,stroke-width:1px
+    classDef client  fill:#1a1a2e,color:#e0e0e0,stroke:#4a9eff,stroke-width:1px
+    classDef bridge  fill:#2e1a1a,color:#e0e0e0,stroke:#e74c3c,stroke-width:2px
+    classDef orch    fill:#0f3460,color:#ffffff,stroke:#53c28b,stroke-width:2px
+    classDef gateway fill:#16213e,color:#e0e0e0,stroke:#f0a500,stroke-width:1px
+    classDef a2a     fill:#2a1a2e,color:#e0e0e0,stroke:#9b59b6,stroke-width:1px
+
+    class SK1,SK2,SK3,SK4,SK5,SK6 skills
+    class C1,C2,C3,C4,C5,C6 client
+    class B1 bridge
+    class ORC orch
+    class O1,O2,O3,O4,O5,O6,O7 orch
+    class T1,T2,T3,T4,T5 gateway
+    class R1,R2,R3 a2a
