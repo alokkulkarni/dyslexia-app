@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Validate and Create Test Coverage",
+  "description": "After any source file is edited, validates unit test coverage (Vitest for React/JS components) and UI automation coverage (Playwright for web). If tests are missing or coverage is insufficient, creates the pending test files automatically.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.js",
+      "**/*.jsx",
+      "frontend/src/**/*.*",
+      "backend/src/**/*.*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was just edited. You must validate and enforce test coverage for this project. Follow these steps:\n\n## Tech Stack Context\n- Frontend: React 19 + JSX + Vite (located in frontend/src/)\n- Backend: Node.js CommonJS Lambda functions (located in backend/src/)\n- Unit test framework: Vitest (preferred for Vite projects) with @testing-library/react for React components\n- UI automation framework: Playwright for end-to-end browser tests\n\n## Step 1: Assess the changed file\nIdentify what was changed (component, utility, backend handler, config, etc.).\n\n## Step 2: Check unit test coverage\n- For frontend React components (*.jsx): look for a corresponding test file at frontend/src/components/__tests__/ or alongside the component as *.test.jsx or *.spec.jsx\n- For frontend utilities (*.js in utils/): look for *.test.js or *.spec.js alongside or in a __tests__ folder\n- For backend Lambda handlers (*.js in backend/src/): look for *.test.js in backend/src/__tests__/ or backend/tests/\n- If Vitest is not yet configured in frontend/package.json, add it (vitest, @testing-library/react, @testing-library/jest-dom, jsdom) and update vite.config.js with test config\n- If Jest is not yet configured in backend/package.json, add it and configure it\n\n## Step 3: Check UI automation coverage\n- Look for a playwright/ or e2e/ directory at the project root or inside frontend/\n- Check if playwright.config.js or playwright.config.ts exists\n- For any React component or user-facing flow that was changed, check if a corresponding Playwright test exists in the e2e/tests/ or playwright/tests/ directory\n- If Playwright is not configured, set it up: install @playwright/test, create playwright.config.js targeting localhost:5173 (Vite dev server)\n\n## Step 4: Create missing tests\n- If unit tests are missing for the changed file, create them now. Write meaningful tests covering: rendering, props/inputs, edge cases, error states, and key business logic\n- If Playwright e2e tests are missing for user-facing functionality in the changed file, create them now. Cover: page load, key user interactions, form submissions, navigation flows, and error states\n- Follow existing naming conventions if tests already exist; otherwise use *.test.jsx for unit and *.spec.ts for Playwright\n\n## Step 5: Report\nSummarise what tests existed, what was created, and any coverage gaps that require manual attention (e.g., tests needing a running backend)."
+  }
+}

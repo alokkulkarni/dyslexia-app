@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "name": "Sync Docs on Source Change",
+  "description": "Watches all JS/JSX source files, config files, and the SAM template for changes. When any of these change, asks the agent to update the relevant documentation in the /docs folder or README.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.css",
+      "**/template.yaml",
+      "**/package.json",
+      "**/vite.config.js",
+      "**/eslint.config.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was just edited. Review the change and update the documentation accordingly. Check the /docs folder (especially docs/architecture.md, docs/implementation_plan.md, and docs/walkthrough.md) and the frontend/README.md. Update any sections that are affected by the change — for example, if a new API endpoint was added, update the architecture or implementation docs; if a component changed, update relevant usage docs. Only update docs that are actually impacted by the change."
+  },
+  "workspaceFolderName": "dyslexia-app",
+  "shortName": "sync-docs-on-source-change"
+}
